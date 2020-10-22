@@ -2,7 +2,7 @@
 # git-syncfork
 
 # 20201022
-# 0.2.1
+# 0.3.0
 
 # Notes:
 # 1. Assumes that the remote is or will be called 'upstream'.
@@ -17,19 +17,16 @@
 #  `git syncfork`
 #   It will sync with upstream.
 
-# Changes since 0.1:
-# 1. Checks for the owner and repo being present in ARGV.
-# 0/1 (Better handling of missing args.)
-# 2. ~ upstream_owner(), upstream_repo to return nil if ARGV[0] isn't parseable.
-# 3. - check_args(), since we can rely on the check in maybe_create_upstream_remote() now.
-# 4. + maybe_create_upstream_remote(), moved from main() and modified to use Git::Remote.add instead of shelling out directly.
-# 5. ~ main(), moved upstream remote check to maybe_create_upstream_remote().
+# Changes since 0.2:
+# 1. + default_branch()
+# 2. ~ main(), so as to make use of default_branch().
+# 3. - require 'Kernel/run', since it just isn't really being used.
+# 4. ~ main(), so as to remove use of Kernel.run.
 
 gem 'git.rb'
 
 require 'Git/Branch'
 require 'Git/Remote'
-require 'Kernel/run'
 
 def upstream_owner
   ARGV[0]&.split('/')&.first
@@ -47,21 +44,25 @@ def maybe_create_upstream_remote
     else
       puts "There is no remote called upstream and one could not be created."
       puts "Run `git syncfork` again with the upstream Github owner and repo like so:"
-      puts "", "`git syncfork owner/repo`"
+      puts "", "`git syncfork owner/repo`", ""
       exit
     end
   end
 end
 
+def default_branch
+  @default_branch ||= `git rev-parse --abbrev-ref origin/HEAD`.strip.split('/').last
+end
+
 def main
   maybe_create_upstream_remote
-  run('git fetch upstream')
-  unless Git::Branch.current.master?
-    Kernel.run('git checkout master')
+  system('git fetch upstream')
+  unless Git::Branch.current.send("#{default_branch}?")
+    system('git checkout #{default_branch}')
   end
-  run('git rebase upstream/master')
-  run('git push')
-  run('git push --tags')
+  system('git rebase upstream/master')
+  system('git push')
+  system('git push --tags')
 end
 
 main
