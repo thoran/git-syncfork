@@ -1,8 +1,8 @@
 #!/usr/bin/env ruby
 # git-syncfork
 
-# 20201002
-# 0.1.0
+# 20201022
+# 0.2.0
 
 # Notes:
 # 1. Assumes that the remote is or will be called 'upstream'.
@@ -16,9 +16,8 @@
 #  `git syncfork`
 #   It will sync with upstream.
 
-# Changes since 0.0:
-# 1. Checks for the existence of 'upstream' remote _before_ attempting to fetch it!
-# 2. Will output usage if 'upstream' remote is missing.
+# Changes since 0.1:
+# 1. Checks for the owner and repo being present in ARGV.
 
 gem 'git.rb'
 
@@ -34,7 +33,15 @@ def upstream_repo
   ARGV[0].split('/').last
 end
 
+def check_args
+  unless ARGV[0] && ARGV[0].match(/\//)
+    puts "No upstream owner or repo supplied.  Use the following format: git syncfork owner/repo."
+    exit
+  end
+end
+
 def main
+  check_args
   unless Git::Remote.exist?('upstream')
     if upstream_owner && upstream_repo
       run("git remote add upstream git@github.com:#{upstream_owner}/#{upstream_repo}.git")
