@@ -1,0 +1,35 @@
+#!/usr/bin/env ruby
+# git-syncfork
+
+# 20200914
+# 0.0.0
+
+# Notes:
+# 1. Assumes that the remote is or will be called 'upstream'.
+
+require 'Git/Branch'
+require 'Git/Remote'
+require 'Kernel/run'
+
+def upstream_owner
+  ARGV[0].split('/').first
+end
+
+def upstream_repo
+  ARGV[0].split('/').last
+end
+
+def main
+  Kernel.run('git fetch upstream')
+  unless Git::Branch.current.master?
+    Kernel.run('git checkout master')
+  end
+  unless Git::Remote.exist?('upstream')
+    Kernel.run("git remote add upstream https://github.com/#{upstream_owner}/#{upstream_repo}.git")
+  end
+  Kernel.run('git rebase upstream/master')
+  Kernel.run('git push')
+  Kernel.run('git push --tags')
+end
+
+main
