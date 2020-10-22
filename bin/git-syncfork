@@ -1,11 +1,26 @@
 #!/usr/bin/env ruby
 # git-syncfork
 
-# 20200914
-# 0.0.0
+# 20201002
+# 0.1.0
 
 # Notes:
 # 1. Assumes that the remote is or will be called 'upstream'.
+# 2. Assumes that the upstream is hosted on Github.
+
+# Usage:
+# 1. If the upstream remote called upstream doesn't exist, then run git-syncfork with the following arguments:
+#  `git syncfork owner/repo`
+#   It will create the upstream remote and sync with upstream.
+# 2. If the upstream remote called upstream does exist, then run git-syncfork without arguments:
+#  `git syncfork`
+#   It will sync with upstream.
+
+# Changes since 0.0:
+# 1. Checks for the existence of 'upstream' remote _before_ attempting to fetch it!
+# 2. Will output usage if 'upstream' remote is missing.
+
+gem 'git.rb'
 
 require 'Git/Branch'
 require 'Git/Remote'
@@ -20,16 +35,23 @@ def upstream_repo
 end
 
 def main
-  Kernel.run('git fetch upstream')
+  unless Git::Remote.exist?('upstream')
+    if upstream_owner && upstream_repo
+      run("git remote add upstream git@github.com:#{upstream_owner}/#{upstream_repo}.git")
+    else
+      puts "There is no remote called upstream and one could not be created."
+      puts "Run `git syncfork` again with the upstream Github owner and repo like so:"
+      puts "", "`git syncfork owner/repo`"
+      exit
+    end
+  end
+  run('git fetch upstream')
   unless Git::Branch.current.master?
     Kernel.run('git checkout master')
   end
-  unless Git::Remote.exist?('upstream')
-    Kernel.run("git remote add upstream https://github.com/#{upstream_owner}/#{upstream_repo}.git")
-  end
-  Kernel.run('git rebase upstream/master')
-  Kernel.run('git push')
-  Kernel.run('git push --tags')
+  run('git rebase upstream/master')
+  run('git push')
+  run('git push --tags')
 end
 
 main
