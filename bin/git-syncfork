@@ -2,11 +2,12 @@
 # git-syncfork
 
 # 20201022
-# 0.2.0
+# 0.2.1
 
 # Notes:
 # 1. Assumes that the remote is or will be called 'upstream'.
 # 2. Assumes that the upstream is hosted on Github.
+# 3. Pinched some of maybe_create_upstream_remote() from a very similar program I wrote earlier this year called git-spoon.
 
 # Usage:
 # 1. If the upstream remote called upstream doesn't exist, then run git-syncfork with the following arguments:
@@ -18,6 +19,11 @@
 
 # Changes since 0.1:
 # 1. Checks for the owner and repo being present in ARGV.
+# 0/1 (Better handling of missing args.)
+# 2. ~ upstream_owner(), upstream_repo to return nil if ARGV[0] isn't parseable.
+# 3. - check_args(), since we can rely on the check in maybe_create_upstream_remote() now.
+# 4. + maybe_create_upstream_remote(), moved from main() and modified to use Git::Remote.add instead of shelling out directly.
+# 5. ~ main(), moved upstream remote check to maybe_create_upstream_remote().
 
 gem 'git.rb'
 
@@ -26,25 +32,18 @@ require 'Git/Remote'
 require 'Kernel/run'
 
 def upstream_owner
-  ARGV[0].split('/').first
+  ARGV[0]&.split('/')&.first
 end
 
 def upstream_repo
-  ARGV[0].split('/').last
+  ARGV[0]&.split('/')&.last
 end
 
-def check_args
-  unless ARGV[0] && ARGV[0].match(/\//)
-    puts "No upstream owner or repo supplied.  Use the following format: git syncfork owner/repo."
-    exit
-  end
-end
-
-def main
-  check_args
+def maybe_create_upstream_remote
   unless Git::Remote.exist?('upstream')
     if upstream_owner && upstream_repo
-      run("git remote add upstream git@github.com:#{upstream_owner}/#{upstream_repo}.git")
+      url = "git@github.com:#{upstream_owner}/#{upstream_repo}.git"
+      Git::Remote.add('upstream', url)
     else
       puts "There is no remote called upstream and one could not be created."
       puts "Run `git syncfork` again with the upstream Github owner and repo like so:"
@@ -52,6 +51,10 @@ def main
       exit
     end
   end
+end
+
+def main
+  maybe_create_upstream_remote
   run('git fetch upstream')
   unless Git::Branch.current.master?
     Kernel.run('git checkout master')
